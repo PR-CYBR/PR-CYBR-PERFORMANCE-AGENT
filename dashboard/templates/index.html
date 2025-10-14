@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>PR-CYBR DevX Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+    <header>
+        <h1>PR-CYBR DevX Dashboard</h1>
+        <p>Centralized view of audit, CI, and deployment workflows.</p>
+    </header>
+
+    <section>
+        <h2>Agent Synchronization Map</h2>
+        <p>Source: <code>{{ sync_map.get("sources", {}).get("diagram", "N/A") }}</code></p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Agent</th>
+                    <th>Workflows</th>
+                    <th>Dependencies</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for agent in agents %}
+                <tr>
+                    <td>{{ agent.name }}</td>
+                    <td>{{ ", ".join(agent.workflows) }}</td>
+                    <td>{{ ", ".join(agent.dependencies) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Latest Codex Analysis</h2>
+        <p>Review <code>{{ sync_map.get("sources", {}).get("analysis", "docs/workflows/codex_analysis.md") }}</code> for full commentary.</p>
+        <p>Track actionable tasks in <code>{{ sync_map.get("sources", {}).get("tasklist", "docs/workflows/codex_tasklist.json") }}</code>.</p>
+    </section>
+</body>
+</html>

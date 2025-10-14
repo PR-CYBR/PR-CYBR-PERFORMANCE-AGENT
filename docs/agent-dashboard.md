@@ -49,7 +49,7 @@ Key Objectives for this Section:
 
 ## Deployment Strategy
 
-<!-- 
+<!--
 Key Objectives for this Section:
 1. Provide clear deployment steps for the frontend dashboard.
 2. Include containerized deployment instructions for Docker environments.
@@ -59,13 +59,19 @@ Key Objectives for this Section:
 ### Containerized Deployment
 1. Build the dashboard Docker image:
 ```bash
-docker build -t pr-cybr-dashboard 
+docker build -t pr-cybr-dashboard
 ```
 2. Run the container:
 ```bash
 docker run -p 8080:80 pr-cybr-dashboard
 ```
 3. Access the dashboard via http://localhost:8080
+
+### FastAPI DevX Module (Scaffold)
+
+- Install dependencies: `pip install -r requirements.txt`
+- Launch the local server: `uvicorn dashboard.app:app --reload`
+- The root route renders synchronization data derived from `reports/agent_sync_map.json` and Codex summaries in `docs/workflows/`.
 
 ## User Experience (UI/UX)
 

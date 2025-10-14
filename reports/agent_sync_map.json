@@ -1,0 +1,20 @@
+{
+  "version": "2024.05",
+  "description": "Mapping between PR-CYBR agents and synchronization workflows.",
+  "sources": {
+    "diagram": "docs/workflows/sync_map.mmd",
+    "tasklist": "docs/workflows/codex_tasklist.json",
+    "analysis": "docs/workflows/codex_analysis.md"
+  },
+  "agents": [
+    {
+      "name": "PR-CYBR-PERFORMANCE-AGENT",
+      "workflows": ["ci", "audit", "dashboard-build"],
+      "dependencies": [
+        "Telemetry ingestion",
+        "CI artifact publishing",
+        "Dashboard deployment"
+      ]
+    }
+  ]
+}

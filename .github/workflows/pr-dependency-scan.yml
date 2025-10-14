@@ -1,0 +1,92 @@
+name: PR Dependency Scan
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare log directory
+        run: mkdir -p reports/ci_logs
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run pip-audit
+        id: audit
+        continue-on-error: true
+        run: |
+          pip-audit -r requirements.txt --format json --progress-spinner off > reports/ci_logs/dependency-audit.json
+
+      - name: Parse dependency vulnerabilities
+        id: parse
+        run: |
+          python - <<'PYTHON'
+          import json
+          import os
+          from pathlib import Path
+
+          report = Path("reports/ci_logs/dependency-audit.json")
+          report.parent.mkdir(parents=True, exist_ok=True)
+          if not report.exists():
+              report.write_text(json.dumps([], indent=2), encoding="utf-8")
+
+          with report.open("r", encoding="utf-8") as handle:
+              try:
+                  findings = json.load(handle)
+              except json.JSONDecodeError:
+                  findings = []
+
+          high_severities = {"HIGH", "CRITICAL"}
+          has_high = False
+
+          for entry in findings:
+              package = entry.get("name")
+              version = entry.get("version")
+              for vuln in entry.get("vulns", []):
+                  severity = (vuln.get("severity") or "UNKNOWN").upper()
+                  advisory = vuln.get("id", "Unknown advisory")
+                  fix_version = vuln.get("fix_versions") or []
+                  fix_text = f" → fix available: {', '.join(fix_version)}" if fix_version else ""
+                  message = f"{package} {version}: {advisory} ({severity}){fix_text}"
+                  if severity in high_severities:
+                      print(f"::error::{message}")
+                      has_high = True
+                  else:
+                      print(f"::warning::{message}")
+
+          output_path = Path(os.environ["GITHUB_OUTPUT"])
+          with output_path.open("a", encoding="utf-8") as handle:
+              handle.write(f"has_high={'true' if has_high else 'false'}\n")
+          PYTHON
+
+      - name: Upload dependency scan logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-scan-logs
+          path: reports/ci_logs/dependency-audit.json
+
+      - name: Ensure audit execution
+        if: steps.audit.outcome == 'failure' && steps.parse.outputs.has_high != 'true'
+        run: |
+          echo "pip-audit execution failed" >&2
+          exit 1
+
+      - name: Fail on high severity vulnerabilities
+        if: steps.parse.outputs.has_high == 'true'
+        run: |
+          echo "High severity dependency vulnerabilities detected" >&2
+          exit 1

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  pr-cybr-performance-agent:
+    image: prcybr/pr-cybr-performance-agent:latest
+    container_name: pr-cybr-performance-agent
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - pr-cybr-net
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+networks:
+  pr-cybr-net:
+    driver: bridge

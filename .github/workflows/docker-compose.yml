@@ -1,18 +1,32 @@
-version: '3.8'
+name: Docker Compose CI
 
-services:
-  pr-cybr-performance-agent:
-    image: prcybr/pr-cybr-performance-agent:latest
-    container_name: pr-cybr-performance-agent
-    env_file: .env  # Load environment variables from .env file
-    volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-    networks:
-      - pr-cybr-net
-    ports:
-      - "8080:80"  # Adjust this port as necessary for your Agent
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
-networks:
-  pr-cybr-net:
-    driver: bridge
+jobs:
+  compose:
+    name: Validate Docker Compose setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create default environment file
+        run: cp .env.example .env
+
+      - name: Validate docker-compose configuration
+        run: docker compose -f docker-compose.yml config
+
+      - name: Start services
+        run: docker compose -f docker-compose.yml up -d --quiet-pull
+
+      - name: Show running containers
+        run: docker ps
+
+      - name: Tear down services
+        if: always()
+        run: docker compose -f docker-compose.yml down

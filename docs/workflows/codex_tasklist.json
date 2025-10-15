@@ -1,0 +1,24 @@
+{
+  "generated": "2024-05-01T01:00:00Z",
+  "owner": "Codex DevX",
+  "tasks": [
+    {
+      "id": "ci-metrics-link",
+      "description": "Link CI metric artifacts to the dashboard data loader.",
+      "status": "pending",
+      "related_files": [
+        "reports/ci_logs/codex_ci_log_TEMPLATE_20240501T003000Z.md",
+        "dashboard/app.py"
+      ]
+    },
+    {
+      "id": "audit-playbook-update",
+      "description": "Update self audit template with new compliance checks.",
+      "status": "pending",
+      "related_files": [
+        "reports/codex_audit_log_TEMPLATE_20240501T000000Z.md",
+        "reports/self_audit.md"
+      ]
+    }
+  ]
+}

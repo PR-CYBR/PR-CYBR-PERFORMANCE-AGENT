@@ -1,0 +1,25 @@
+---
+title: PR-CYBR Performance Agent Sync Map
+---
+flowchart TD
+    trigger_ci([Git Push]) --> ci_pipeline{{CI Pipeline}}
+    trigger_audit([Scheduled Audit]) --> audit_job{{Audit Workflow}}
+    trigger_dashboard([Config Update]) --> dashboard_build{{Dashboard Build}}
+
+    ci_pipeline --> artifacts[/Performance Metrics/]
+    audit_job --> audit_reports[/reports/self_audit.md/]
+    dashboard_build --> devx_ui[/dashboard package/]
+
+    artifacts --> dashboard_build
+    audit_reports --> audit_retrospective((Audit Retro))
+    audit_job --> sync_registry[(agent_sync_map.json)]
+    dashboard_build --> sync_registry
+
+    subgraph Codex Reporting
+        audit_job
+        ci_pipeline
+        dashboard_build
+    end
+
+    sync_registry --> codex_analysis[(codex_analysis.md)]
+    sync_registry --> codex_tasklist[(codex_tasklist.json)]

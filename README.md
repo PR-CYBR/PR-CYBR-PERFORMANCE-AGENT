@@ -25,6 +25,7 @@ The **PR-CYBR-PERFORMANCE-AGENT** is designed to monitor, analyze, and optimize 
 - **Python 3.8+**: Required for running scripts.
 - **Docker**: Required for containerization and deployment.
 - **Access to GitHub Actions**: For automated workflows.
+- **FastAPI Tooling**: Install Python dependencies listed in `requirements.txt` to enable the DevX dashboard module.
 
 ### Local Setup
 
@@ -50,6 +51,20 @@ _This script will install necessary dependencies and set up the local environmen
 ./scripts/provision_agent.sh
 ```
 _This script configures the agent with default settings for local development._
+
+4. **Install Dashboard Dependencies**
+
+```bash
+pip install -r requirements.txt
+```
+
+5. **Launch the DevX Dashboard (Optional)**
+
+```bash
+uvicorn dashboard.app:app --reload
+```
+
+_The dashboard surfaces synchronization data from `reports/agent_sync_map.json` along with Codex analyses located in `docs/workflows/`._
 
 ### Cloud Deployment
 
@@ -82,6 +97,22 @@ To deploy the agent to a cloud environment:
 ## Integration
 
 The `PR-CYBR-PERFORMANCE-AGENT` integrates with other `PR-CYBR` agents to monitor and optimize performance across the ecosystem. It communicates with agents like `PR-CYBR-BACKEND-AGENT`, `PR-CYBR-FRONTEND-AGENT`, and `PR-CYBR-INFRASTRUCTURE-AGENT` to collect performance data and provide optimization recommendations.
+
+### Reporting & Workflow Documentation
+
+- Audit and CI evidence is captured under the `reports/` hierarchy:
+  - `reports/self_audit.md` tracks manual and automated reviews.
+  - `reports/codex_audit_log_TEMPLATE_*.md` and `reports/ci_logs/codex_ci_log_TEMPLATE_*.md` seed Codex-authored narratives tied to CI runs.
+  - `reports/agent_sync_map.json` enumerates workflow dependencies surfaced in the dashboard.
+- Workflow diagrams and Codex summaries reside in `docs/workflows/` (`sync_map.mmd`, `codex_analysis.md`, `codex_tasklist.json`) to guide cross-agent coordination.
+
+### DevX Dashboard Integration
+
+The `/dashboard` module is a FastAPI application that renders the synchronization map and Codex insights. Deployment teams should:
+
+1. Keep the JSON and Markdown sources up to date before publishing the dashboard.
+2. Serve the app via Uvicorn or containerize it alongside other PR-CYBR DevX tooling.
+3. Reference `docs/workflows/sync_map.mmd` when extending dashboard views or GitHub Actions triggers.
 
 ## Usage
 

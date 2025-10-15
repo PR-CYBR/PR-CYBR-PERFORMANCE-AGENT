@@ -52,19 +52,30 @@ _This script will install necessary dependencies and set up the local environmen
 ```
 _This script configures the agent with default settings for local development._
 
-4. **Install Dashboard Dependencies**
+### Automation Scripts
+
+Two new top-level scripts standardize environment preparation and ongoing care for both developers and automation platforms (Codex, AgentKit, CI):
+
+- `./setup.sh` – Validates prerequisites, verifies repository structure, and captures an execution report. By default it runs interactively; use `--non-interactive` to skip prompts or `--yes`/`--force` to auto-approve decisions in CI pipelines. Logs are stored in `./logs/` and human-readable reports are saved in `./reports/`.
+- `./maintenance.sh` – Performs routine housekeeping such as optional log rotation, disk-usage snapshots, Git state reporting, and host health capture. Supports `--retention-days <n>`, `--dry-run`, and the same non-interactive flags as `setup.sh`.
+
+#### Common invocation patterns
 
 ```bash
-pip install -r requirements.txt
+# Local developer run with prompts
+./setup.sh
+
+# Non-interactive CI run that proceeds even if dependencies are missing
+./setup.sh --non-interactive --force
+
+# Scheduled maintenance with 14-day log retention and safe defaults
+./maintenance.sh --non-interactive --retention-days 14
+
+# Preview maintenance actions without deleting files
+./maintenance.sh --dry-run
 ```
 
-5. **Launch the DevX Dashboard (Optional)**
-
-```bash
-uvicorn dashboard.app:app --reload
-```
-
-_The dashboard surfaces synchronization data from `reports/agent_sync_map.json` along with Codex analyses located in `docs/workflows/`._
+Each execution appends timestamped `.log` files under `./logs/` and matching Markdown or JSON artifacts under `./reports/`, enabling downstream automation to collect evidence without additional configuration.
 
 ### Cloud Deployment
 

@@ -1,0 +1,102 @@
+name: PR Container Integrity
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare log directory
+        run: mkdir -p reports/ci_logs
+
+      - name: Run Trivy filesystem scan
+        id: trivy
+        uses: aquasecurity/trivy-action@0.20.0
+        continue-on-error: true
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          format: json
+          output: reports/ci_logs/container-scan.json
+          security-checks: vuln,config
+          severity: HIGH,CRITICAL
+          path: build
+
+      - name: Parse container scan results
+        id: parse
+        run: |
+          python - <<'PYTHON'
+          import json
+          import os
+          from pathlib import Path
+
+          report = Path("reports/ci_logs/container-scan.json")
+          report.parent.mkdir(parents=True, exist_ok=True)
+          if not report.exists():
+              report.write_text(json.dumps({"Results": []}, indent=2), encoding="utf-8")
+
+          with report.open("r", encoding="utf-8") as handle:
+              try:
+                  findings = json.load(handle)
+              except json.JSONDecodeError:
+                  findings = {"Results": []}
+
+          results = findings.get("Results", []) if isinstance(findings, dict) else []
+          has_high = False
+
+          for result in results:
+              target = result.get("Target", "filesystem")
+              vulnerabilities = result.get("Vulnerabilities") or []
+              misconfigurations = result.get("Misconfigurations") or []
+
+              for issue in vulnerabilities:
+                  severity = (issue.get("Severity") or "UNKNOWN").upper()
+                  pkg = issue.get("PkgName", "unknown package")
+                  vid = issue.get("VulnerabilityID", "VULN")
+                  message = f"{target}: {pkg} → {vid} ({severity})"
+                  if severity in {"HIGH", "CRITICAL"}:
+                      print(f"::error::{message}")
+                      has_high = True
+                  else:
+                      print(f"::warning::{message}")
+
+              for issue in misconfigurations:
+                  severity = (issue.get("Severity") or "UNKNOWN").upper()
+                  id_ = issue.get("ID", "MISCONFIG")
+                  message = f"{target}: {id_} ({severity})"
+                  if severity in {"HIGH", "CRITICAL"}:
+                      print(f"::error::{message}")
+                      has_high = True
+                  else:
+                      print(f"::warning::{message}")
+
+          output_path = Path(os.environ["GITHUB_OUTPUT"])
+          with output_path.open("a", encoding="utf-8") as handle:
+              handle.write(f"has_high={'true' if has_high else 'false'}\n")
+          PYTHON
+
+      - name: Upload container scan logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-scan-logs
+          path: reports/ci_logs/container-scan.json
+
+      - name: Ensure scanner execution
+        if: steps.trivy.outcome == 'failure' && steps.parse.outputs.has_high != 'true'
+        run: |
+          echo "Trivy execution failed" >&2
+          exit 1
+
+      - name: Fail on high severity container issues
+        if: steps.parse.outputs.has_high == 'true'
+        run: |
+          echo "High severity container issues detected" >&2
+          exit 1

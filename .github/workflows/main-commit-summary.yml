@@ -1,0 +1,53 @@
+name: Main Branch Code Summary
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate update summary
+        id: summary
+        run: |
+          mkdir -p reports/ci_logs
+          python scripts/generate_commit_summary.py --base "${{ github.event.before }}" --head "${{ github.sha }}" --output reports/ci_logs/main-commit-summary.txt
+          {
+            echo "body<<'EOF'";
+            cat reports/ci_logs/main-commit-summary.txt;
+            echo "EOF";
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish commit discussion
+        uses: actions/github-script@v7
+        env:
+          SUMMARY_BODY: ${{ steps.summary.outputs.body }}
+          COMMIT_SHA: ${{ github.sha }}
+        with:
+          script: |
+            const body = process.env.SUMMARY_BODY;
+            if (!body) {
+              core.info('No summary body generated.');
+              return;
+            }
+
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: process.env.COMMIT_SHA,
+              body,
+            });
+
+      - name: Upload summary log
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-commit-summary
+          path: reports/ci_logs/main-commit-summary.txt

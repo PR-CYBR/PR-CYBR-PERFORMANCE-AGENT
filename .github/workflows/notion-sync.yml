@@ -1,0 +1,94 @@
+name: Notion Sync Automation
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+      - reopened
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+  discussion:
+    types:
+      - created
+      - edited
+  project_card:
+    types:
+      - created
+      - moved
+      - updated
+  project_column:
+    types:
+      - created
+      - updated
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Dev Branch Workflow
+      - Stage Branch Workflow
+      - Prod Branch Workflow
+    types:
+      - completed
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  discussions: write
+  projects: write
+
+jobs:
+  sync:
+    name: Sync to Notion
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements/*.txt
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            echo "Installing dependencies from requirements.txt"
+            pip install -r requirements.txt
+          else
+            echo "::warning::requirements.txt not found. Skipping dependency installation."
+          fi
+
+      - name: Run Notion sync
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: |
+          set -euo pipefail
+          echo "Preparing to run Notion sync with event payload at: ${GITHUB_EVENT_PATH}"
+          if [ ! -f scripts/notion_sync.py ]; then
+            echo "::warning::Notion sync script missing at scripts/notion_sync.py. Skipping run."
+            echo "Notion sync skipped because scripts/notion_sync.py was not found." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          trap 'echo "::error::Notion sync command failed. Review the logs above for details."; echo "Notion sync failed. See logs for details." >> "$GITHUB_STEP_SUMMARY"' ERR
+          echo "Executing: python scripts/notion_sync.py \"${GITHUB_EVENT_PATH}\""
+          python scripts/notion_sync.py "${GITHUB_EVENT_PATH}" 2>&1 | tee notion-sync.log
+          echo "Notion sync completed successfully." >> "$GITHUB_STEP_SUMMARY"
+          echo "Logs saved to notion-sync.log"
+
+      - name: Upload Notion sync logs
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notion-sync-logs
+          path: notion-sync.log
+          if-no-files-found: warn

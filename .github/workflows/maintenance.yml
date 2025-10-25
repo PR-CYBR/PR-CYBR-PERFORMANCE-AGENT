@@ -1,5 +1,12 @@
 name: maintenance
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  discussions: write
+  projects: write
+
 on:
   workflow_dispatch:   # manual trigger
   schedule:            # optional: run daily at 02:00 UTC

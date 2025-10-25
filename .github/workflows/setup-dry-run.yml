@@ -1,5 +1,12 @@
 name: setup-dry-run
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  discussions: write
+  projects: write
+
 on:
   workflow_dispatch:   # manual trigger
   push:

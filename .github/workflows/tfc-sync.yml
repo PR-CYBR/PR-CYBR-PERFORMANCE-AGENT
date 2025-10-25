@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
   id-token: write   # Prepares for Terraform Cloud OIDC auth
+  issues: write
+  pull-requests: write
+  discussions: write
+  projects: write
 
 jobs:
   terraform:

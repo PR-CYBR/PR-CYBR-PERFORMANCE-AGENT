@@ -85,24 +85,52 @@ The `PR-CYBR-PERFORMANCE-AGENT` integrates with other `PR-CYBR` agents to monito
 
 ## Usage
 
-•	Development
-•	Start the performance monitoring tools:
+- **Development**
+  - Start the performance monitoring tools:
 
 ```bash
 python setup.py develop
 ```
 
-- Configure monitoring parameters in the config/ directory.
+  - Configure monitoring parameters in the `config/` directory.
 
-•	Testing
-•	Run performance tests:
+- **Testing**
+  - Run performance tests:
 
 ```bash
 python -m unittest discover tests
 ```
 
-•	Building for Production
-•	Build the agent for production use:
+### Notion Sync Utilities
+
+The repository includes a light-weight Notion sync framework with aggregated error handling and structured logging.
+
+- **Run the Notion unit tests** (recommended during development):
+
+  ```bash
+  make notion-test
+  ```
+
+- **Preview a Notion sync without calling the API** by enabling dry-run mode. The environment variable `DRY_RUN=true` prevents handlers from executing and instead logs the intended actions:
+
+  ```bash
+  make notion-dry-run
+  ```
+
+  You can also call the CLI directly with custom arguments:
+
+  ```bash
+  DRY_RUN=true python -m notion_sync.cli --dry-run
+  ```
+
+### Manual Workflow Dispatch & Monitoring
+
+- Create and test features on a dedicated branch (for example, `feature/notion-logging-improvements`) to align with the spec-bootstrap workflow before opening a pull request.
+- Trigger the `setup-dry-run` GitHub Actions workflow with `workflow_dispatch` to validate integration paths against staging data or sample payloads.
+- Monitor initial production runs through the GitHub Actions logs as well as Notion’s activity feed. Repeated failures can be surfaced via optional alerting hooks (e.g., Slack webhooks) configured in follow-up automation.
+
+- **Building for Production**
+  - Build the agent for production use:
 
 ```bash
 python setup.py install

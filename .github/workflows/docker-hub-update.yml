@@ -1,5 +1,12 @@
 name: Build and Publish image to Docker Hub
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  discussions: write
+  projects: write
+
 on:
   push:
     branches:

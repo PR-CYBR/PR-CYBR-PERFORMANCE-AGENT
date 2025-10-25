@@ -13,6 +13,13 @@ permissions:
   contents: read
   id-token: write   # Prepares for Terraform Cloud OIDC auth
 
+env:
+  NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+  NOTION_TASK_DB: ${{ secrets.NOTION_TASK_DB }}
+  NOTION_PR_DB: ${{ secrets.NOTION_PR_DB }}
+  NOTION_PROJECT_DB: ${{ secrets.NOTION_PROJECT_DB }}
+  NOTION_DISCUSSION_DB: ${{ secrets.NOTION_DISCUSSION_DB }}
+
 jobs:
   terraform:
     runs-on: ubuntu-latest

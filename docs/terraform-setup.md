@@ -9,7 +9,7 @@ This repository uses Terraform Cloud to manage infrastructure and configuration 
 - **main.tf**: Main Terraform configuration with backend setup
 - **agent-variables.tf**: Variable declarations for agent configuration
 - **.terraform/**: Local provider plugins (ignored by git)
-- **.terraform.lock.hcl**: Dependency lock file (ignored by git)
+- **.terraform.lock.hcl**: Dependency lock file (committed to ensure consistent provider versions)
 
 ## Terraform Cloud Setup
 
@@ -37,8 +37,9 @@ terraform {
 
 The `.github/workflows/tfc-sync.yml` workflow automates Terraform operations:
 
-1. **On Pull Requests**: Runs `terraform plan` to validate changes
-2. **On Push to Main**: Runs `terraform apply` to apply changes
+1. **On Pull Requests to Main**: Runs `terraform plan` to validate changes
+2. **On Push to codex/agents branches**: Runs `terraform plan` to validate changes
+3. **On Push to Main**: Runs `terraform apply` to apply approved changes
 
 ### Required Secrets
 

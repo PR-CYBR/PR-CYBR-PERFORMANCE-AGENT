@@ -117,6 +117,19 @@ jobs:
     fields: repo,message
 ```
 
+## Terraform Cloud Workflow Bridge
+
+- **Purpose**: Keep infrastructure credentials and runtime secrets inside Terraform Cloud while still validating and applying configuration changes from GitHub.
+- **Workflow File**: `.github/workflows/terraform-cloud-bridge.yml`
+- **Triggers**:
+  - Pull requests targeting `main` automatically queue speculative runs.
+  - Pushes to `main` queue apply runs and auto-confirm when workspace permissions allow it.
+- **GitHub Configuration**:
+  - Repository variables `TF_CLOUD_ORGANIZATION`, `TF_WORKSPACE`, and optionally `TF_CONFIG_DIRECTORY`.
+  - Repository secret `TFC_WORKFLOW_TOKEN` with permission to create runs in the workspace.
+- **Secret Management**: Provider credentials, registry tokens, and other sensitive values remain in Terraform Cloud as workspace or variable-set entries declared in `agent-variables.tf`.
+- **Review Experience**: Plan summaries are posted back to pull requests so reviewers can inspect Terraform Cloud output without leaving GitHub.
+
 ## Appendix
 
 	•	Glossary of terms (e.g., “runner”, “job”, “step”).

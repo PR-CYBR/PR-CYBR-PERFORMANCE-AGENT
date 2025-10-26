@@ -1,0 +1,155 @@
+name: terraform-cloud-workflow-bridge
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.tf'
+      - '.terraform.lock.hcl'
+      - 'terraform/**'
+      - 'modules/**'
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.tf'
+      - '.terraform.lock.hcl'
+      - 'terraform/**'
+      - 'modules/**'
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  TF_CLOUD_ORGANIZATION: ${{ vars.TF_CLOUD_ORGANIZATION }}
+  TF_WORKSPACE: ${{ vars.TF_WORKSPACE }}
+  TF_CONFIG_DIRECTORY: ${{ vars.TF_CONFIG_DIRECTORY || '.' }}
+  TF_MAX_TIMEOUT: ${{ vars.TF_MAX_TIMEOUT || '45m' }}
+  TF_API_TOKEN: ${{ secrets.TFC_WORKFLOW_TOKEN }}
+
+jobs:
+  speculative-plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload configuration to Terraform Cloud
+        id: upload
+        uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.3.2
+        with:
+          workspace: ${{ env.TF_WORKSPACE }}
+          directory: ${{ env.TF_CONFIG_DIRECTORY }}
+          speculative: true
+
+      - name: Queue speculative run
+        id: create-run
+        continue-on-error: true
+        uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.2
+        with:
+          workspace: ${{ env.TF_WORKSPACE }}
+          configuration_version: ${{ steps.upload.outputs.configuration_version_id }}
+          plan_only: true
+          message: >-
+            Speculative plan from GitHub Actions run ${{ github.run_id }} for commit ${{ github.sha }}
+
+      - name: Collect plan summary
+        id: plan-output
+        if: steps.create-run.outputs.plan_id != ''
+        uses: hashicorp/tfc-workflows-github/actions/plan-output@v1.3.2
+        with:
+          plan: ${{ steps.create-run.outputs.plan_id }}
+
+      - name: Update pull request with Terraform plan
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const runLink = '${{ steps.create-run.outputs.run_link }}';
+            const status = '${{ steps.create-run.outputs.run_status }}';
+            const adds = '${{ steps.plan-output.outputs.add }}';
+            const changes = '${{ steps.plan-output.outputs.change }}';
+            const destroys = '${{ steps.plan-output.outputs.destroy }}';
+            const summary = `#### Terraform Cloud Plan\nStatus: **${status}**\n\n\`\`\`\nAdd: ${adds}\nChange: ${changes}\nDestroy: ${destroys}\n\`\`\`\n[View run in Terraform Cloud](${runLink})`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(
+              (comment) => comment.user.type === 'Bot' && comment.body.includes('Terraform Cloud Plan'),
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: summary,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: summary,
+              });
+            }
+
+      - name: Fail if plan did not finish cleanly
+        if: steps.create-run.outputs.run_status != 'planned_and_finished'
+        run: |
+          echo "Terraform Cloud plan did not finish successfully."
+          echo "Status: ${{ steps.create-run.outputs.run_status }}"
+          echo "Details: ${{ steps.create-run.outputs.run_link }}"
+          exit 1
+
+  apply:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: terraform-cloud-apply
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload configuration to Terraform Cloud
+        id: upload
+        uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.3.2
+        with:
+          workspace: ${{ env.TF_WORKSPACE }}
+          directory: ${{ env.TF_CONFIG_DIRECTORY }}
+
+      - name: Queue apply run
+        id: create-run
+        uses: hashicorp/tfc-workflows-github/actions/create-run@v1.3.2
+        with:
+          workspace: ${{ env.TF_WORKSPACE }}
+          configuration_version: ${{ steps.upload.outputs.configuration_version_id }}
+          message: Apply run from GitHub Actions run ${{ github.run_id }}
+
+      - name: Auto-apply when confirmation is required
+        if: ${{ fromJSON(steps.create-run.outputs.payload).data.attributes.actions.IsConfirmable }}
+        id: apply
+        uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.3.2
+        with:
+          run: ${{ steps.create-run.outputs.run_id }}
+          comment: Auto-approved from GitHub Actions
+
+      - name: Verify apply result
+        run: |
+          status='${{ steps.apply.outputs.run_status }}'
+          if [ -z "$status" ]; then
+            status='${{ steps.create-run.outputs.run_status }}'
+          fi
+          if [ "$status" != "applied" ] && [ "$status" != "planned_and_finished" ]; then
+            echo "Terraform Cloud run completed with status $status"
+            echo "Details: ${{ steps.create-run.outputs.run_link }}"
+            exit 1
+          fi

@@ -7,30 +7,54 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    env:
-      REQUIRED_VARS: |
-        AGENT_ACTIONS
-        NOTION_DISCUSSIONS_ARC_DB_ID
-        NOTION_ISSUES_BACKLOG_DB_ID
-        NOTION_KNOWLEDGE_FILE_DB_ID
-        NOTION_PAGE_ID
-        NOTION_PR_BACKLOG_DB_ID
-        NOTION_PROJECT_BOARD_BACKLOG_DB_ID
-        NOTION_TASK_BACKLOG_DB_ID
-        NOTION_TOKEN
     steps:
-      - name: Check required environment variables
+      - name: Check required secrets and variables
+        env:
+          AGENT_ACTIONS: ${{ secrets.AGENT_ACTIONS }}
+          NOTION_DISCUSSIONS_ARC_DB_ID: ${{ vars.NOTION_DISCUSSIONS_ARC_DB_ID }}
+          NOTION_ISSUES_BACKLOG_DB_ID: ${{ vars.NOTION_ISSUES_BACKLOG_DB_ID }}
+          NOTION_KNOWLEDGE_FILE_DB_ID: ${{ vars.NOTION_KNOWLEDGE_FILE_DB_ID }}
+          NOTION_PAGE_ID: ${{ vars.NOTION_PAGE_ID }}
+          NOTION_PR_BACKLOG_DB_ID: ${{ vars.NOTION_PR_BACKLOG_DB_ID }}
+          NOTION_PROJECT_BOARD_BACKLOG_DB_ID: ${{ vars.NOTION_PROJECT_BOARD_BACKLOG_DB_ID }}
+          NOTION_TASK_BACKLOG_DB_ID: ${{ vars.NOTION_TASK_BACKLOG_DB_ID }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: |
           missing=false
-          for var in $REQUIRED_VARS; do
+          
+          # Check secrets (show as set/unset without revealing values)
+          if [ -z "$AGENT_ACTIONS" ]; then
+            echo "❌ Missing required secret: AGENT_ACTIONS"
+            missing=true
+          else
+            echo "✅ AGENT_ACTIONS is set"
+          fi
+          
+          if [ -z "$NOTION_TOKEN" ]; then
+            echo "❌ Missing required secret: NOTION_TOKEN"
+            missing=true
+          else
+            echo "✅ NOTION_TOKEN is set"
+          fi
+          
+          # Check variables
+          for var in NOTION_DISCUSSIONS_ARC_DB_ID NOTION_ISSUES_BACKLOG_DB_ID NOTION_KNOWLEDGE_FILE_DB_ID NOTION_PAGE_ID NOTION_PR_BACKLOG_DB_ID NOTION_PROJECT_BOARD_BACKLOG_DB_ID NOTION_TASK_BACKLOG_DB_ID; do
             if [ -z "${!var}" ]; then
-              echo "❌ Missing required environment variable: $var"
+              echo "❌ Missing required variable: $var"
               missing=true
             else
               echo "✅ $var is set"
             fi
           done
+          
           if [ "$missing" = true ]; then
-            echo "One or more required environment variables are missing."
+            echo ""
+            echo "⚠️  One or more required secrets or variables are missing."
+            echo "Please configure them in the repository settings:"
+            echo "  - Secrets: Settings → Secrets and variables → Actions → Secrets"
+            echo "  - Variables: Settings → Secrets and variables → Actions → Variables"
             exit 1
+          else
+            echo ""
+            echo "✅ All required environment variables are configured!"
           fi

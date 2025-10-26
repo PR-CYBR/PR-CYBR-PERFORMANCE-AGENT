@@ -53,31 +53,34 @@ _This script configures the agent with default settings for local development._
 
 ### Cloud Deployment
 
-To deploy the agent to a cloud environment:
+To deploy the agent to a cloud environment while keeping infrastructure secrets centralized in Terraform Cloud:
 
-1. **Configure Repository Secrets**
+1. **Configure Terraform Cloud Workspace Variables**
 
-- Navigate to `Settings` > `Secrets and variables` > `Actions` in your GitHub repository.
-- Add the required secrets:
-   - `CLOUD_API_KEY`
-   - `DOCKERHUB_USERNAME`
-   - `DOCKERHUB_PASSWORD`
-- Any other cloud-specific credentials.
+   - Use the Terraform Cloud workspace backing this repository to store provider credentials, registry tokens, and all other sensitive values. The shared declarations in [`agent-variables.tf`](agent-variables.tf) describe the variables expected to be present.
+   - Optionally group shared settings into a Terraform Cloud variable set so that updates remain centralized across PR-CYBR agents.
 
-2. **Deploy Using GitHub Actions**
+2. **Connect GitHub to Terraform Cloud via the workflow bridge**
 
-- The deployment workflow is defined in `.github/workflows/docker-compose.yml`.
-- Push changes to the `main` branch to trigger the deployment workflow automatically.
+   - In GitHub, navigate to `Settings` > `Secrets and variables` > `Actions` and create:
+     - Repository **variables** `TF_CLOUD_ORGANIZATION`, `TF_WORKSPACE`, and (optionally) `TF_CONFIG_DIRECTORY` to point the workflow at the correct Terraform Cloud workspace and configuration path.
+     - A repository **secret** `TFC_WORKFLOW_TOKEN` containing a Terraform Cloud user, team, or workload-identity API token with permission to queue runs in the selected workspace.
+   - No cloud provider credentials or registry passwords are stored in GitHub—Terraform Cloud injects them during the run.
 
-3. **Manual Deployment**
+3. **Deploy Using GitHub Actions**
 
-- Use the deployment script for manual deployment:
+   - The bridge workflow is defined in `.github/workflows/terraform-cloud-bridge.yml`. Pull requests to `main` queue speculative plans, and merges to `main` queue apply runs in Terraform Cloud.
+   - Push changes that include Terraform configuration updates to `main` to trigger an apply run, or open a pull request for a plan-only validation.
+
+4. **Manual Deployment**
+
+   - Use the deployment script for manual deployment if a Terraform Cloud run is not required:
 
 ```bash
 ./scripts/deploy_agent.sh
 ```
 
-- Ensure you have Docker and cloud CLI tools installed and configured on your machine.
+   - Ensure you have Docker and cloud CLI tools installed and configured on your machine.
 
 ## Integration
 

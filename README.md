@@ -55,14 +55,20 @@ _This script configures the agent with default settings for local development._
 
 To deploy the agent to a cloud environment:
 
-1. **Configure Repository Secrets**
+1. **Configure Repository Secrets and Variables**
 
-- Navigate to `Settings` > `Secrets and variables` > `Actions` in your GitHub repository.
-- Add the required secrets:
-   - `CLOUD_API_KEY`
-   - `DOCKERHUB_USERNAME`
-   - `DOCKERHUB_PASSWORD`
-- Any other cloud-specific credentials.
+   - Navigate to `Settings` > `Secrets and variables` > `Actions` in your GitHub repository.
+   - Configure the required secrets and variables as documented in [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+   - Required secrets:
+      - `AGENT_ACTIONS` - GitHub Personal Access Token
+      - `NOTION_TOKEN` - Notion Integration Token
+      - `CLOUD_API_KEY` (if using cloud services)
+      - `DOCKERHUB_USERNAME` (if using Docker Hub)
+      - `DOCKERHUB_PASSWORD` (if using Docker Hub)
+   - Required variables:
+      - All Notion database IDs (see [Configuration Guide](docs/CONFIGURATION.md))
+
+   > **Note:** See the [Configuration Guide](docs/CONFIGURATION.md) for detailed setup instructions.
 
 2. **Deploy Using GitHub Actions**
 
